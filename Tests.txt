@@ -1,0 +1,462 @@
+
+
+## Ordinary 2 sample t test
+## Pooled t test
+## Mixture of t and Welsh test
+## Bootstrap tests
+## Permutations test
+## New Hauser tests
+## SAMS T test
+## Modified SAMS' test
+
+
+
+################################
+################################
+### Pooled 2 sample t test   ###
+################################
+################################
+
+x = c( 1,12,13,14,15,12,13,12,12, 10)
+y = c( 1, 5, 8, 7,10, 8, 9,11, 7,  2)
+
+
+pooled.two.sample = function(x,y)
+{
+pooled.test = t.test(x,y, var.equal = TRUE)
+pvalue = pooled.test$p.value
+test.statistic = pooled.test$statistic
+return(list(pvalue, test.statistic))
+}
+
+
+##Trial
+##pooled.two.sample(x,y)
+
+
+###############################
+###############################
+####Welsh 2 sample t test #####
+###############################
+###############################
+
+welsh.two.sample = function(x,y)
+{
+welsh.test = t.test(x,y)
+pvalue = welsh.test$p.value
+test.statistic = welsh.test$statistic
+return(list(pvalue, test.statistic))
+}
+
+
+##Trial
+##welsh.two.sample(x,y)
+
+
+
+######################
+######################
+## Wilcoxon Test  ####
+######################
+######################
+
+wilcoxon.two.sample = function(x,y)
+{
+wilcoxon.test = wilcox.test(x,y)
+pvalue = wilcoxon.test$p.value
+test.statistic = wilcoxon.test$statistic
+return(list(pvalue, test.statistic))
+}
+
+
+##Trial
+##wilcoxon.two.sample(x,y)
+
+
+
+###################################################
+###################################################
+####### New-Hauser Test ###########################
+###################################################
+###################################################
+
+B = 10000
+
+new.hauser.test = function(x,y, B)
+{
+
+pooled.t.test = t.test(x,y,var.equal=TRUE)
+n1 = length(x)
+n2 = length(y)
+n = n1 + n2
+xy = c(x,y)
+ranks.xy = rank( c(x,y))
+rank.x = ranks.xy[1:n1]
+rank.y = ranks.xy[(n1+1):n]
+ranks.pooled.t.test = t.test(rank.x,rank.y,var.equal=TRUE)
+
+new.observed.hauser.statistic = max( abs(pooled.t.test$statistic), abs(ranks.pooled.t.test$statistic))
+
+#Use permutation method to estimate the pvalue
+
+n1 = length(x)
+n2 = length(y)
+diff.permtest.new.hauserstats = rep(0,B)
+for ( m in 1:B)
+{
+perm.data = sample(xy, (n1+n2), replace = FALSE)
+perm.data.rank = rank(perm.data)
+perm.x = perm.data[1:n1]
+perm.y = perm.data[(n1+1):n]
+perm.x.ranks = perm.data.rank[1:n1]
+perm.y.ranks = perm.data.rank[(n1+1):n]
+pooled.t.test.perm = t.test(perm.x, perm.y, var.equal=TRUE)
+pooled.t.test.ranks = t.test(perm.x.ranks, perm.y.ranks,var.equal=TRUE)
+diff.boottest.new.hauserstats[m] = max( abs(pooled.t.test.ranks$statistic), abs(pooled.t.test.perm$statistic))
+}
+
+pval.new.hause.boot = mean( abs(diff.permtest.new.hauserstats) >= abs(new.observed.hauser.statistic))
+return(list(pval.new.hause.boot, new.observed.hauser.statistic ))
+
+}
+
+new.hauser.test(x,y, B)
+
+
+
+
+
+####################
+####################
+##Bootstrap Test  ##
+####################
+####################
+
+
+x = rnorm(10, 0, 1)
+y = rnorm(10, 2, 1)
+n.cases = 10
+B = 10000
+
+
+boot.test.pvalue = function(x, y, B)
+{
+n1 = length(x)
+n2 = length(y)
+observed.F = (t.test(x, y, var.equal=TRUE)$statistic)^2
+diff.bootteststats = rep(0,B)
+for ( m in 1:B)
+{
+boot.A = sample(x, n1, replace=TRUE)
+boot.B = sample(y, n2, replace=TRUE)
+diff.bootteststats[m] = (t.test(boot.A, boot.B, var.equal=TRUE)$statistic)^2
+}
+
+pval.boot = mean(diff.bootteststats >= observed.F)
+return(pval.boot)
+}
+
+##Trial
+##boot.test.pvalue(x,y, B=10000)
+
+
+
+##################################
+##################################
+##Permutation test pvalues   #####
+##################################
+##################################
+
+##Permutation test statistics in  means
+
+x = rnorm(10, 0, 1)
+y = rnorm(10, 2, 1)
+B = 10000
+
+
+permute.teststatistic.pvalue = function(x,y, B)
+{
+n1  = length(x)
+n2  = length(y)
+data = c(x,y)
+observed.diff.perm = (t.test(x,y, var.equal=TRUE)$statistic)^2
+diff.permuteststats = rep(0,B)
+
+for (m in 1:B)
+{
+perm = sample(data, 2*n.cases, replace = FALSE)
+perm.A = perm[1:n.cases]
+perm.B = perm[(1+n1):(n1 + n2)]
+diff.permuteststats[m] = (t.test(perm.A , perm.B, var.equal=TRUE)$statistic)^2
+}
+pval.boot = mean(diff.permuteststats > observed.diff.perm)
+return(pval.boot)
+}
+
+permute.teststatistic.pvalue(x, y, B=10000)
+
+##############################################################################
+##############################################################################
+##WORKS!!!!
+
+##Permutation diff in  means
+
+x = rnorm(10, 0, 1)
+y = rnorm(10, 2, 1)
+B = 10000
+
+
+permute.test.pvalue = function(x,y,B)
+{
+n1  = length(x)
+n2  = length(y)
+data = c(x,y)
+observed.diff.perm = mean(x) - mean(y)
+diff.permuteststats = rep(0,B)
+
+for (m in 1:B)
+{
+perm = sample(data, 2*n.cases, replace = FALSE)
+perm.A = perm[1:n.cases]
+perm.B = perm[(1+n1):(n1 + n2)]
+diff.permuteststats[m] = mean(perm.A) - mean(perm.B) 
+}
+pval.boot = mean(abs(diff.permuteststats) > abs(observed.diff.perm))
+return(pval.boot)
+}
+
+permute.testdiff.pvalue(x, y, B=10000)
+
+###################
+###################
+#SAM t test    ####
+###################
+###################
+
+est.s0 <- function(tt, sd, s0.perc = seq(0, 1, by = 0.05)) {
+	## estimate s0 (exchangeability) factor for denominator.
+	## returns the actual estimate s0 (not a percentile)
+	br = unique(quantile(sd, seq(0, 1, len = 101)))
+	nbr = length(br)
+	a <- cut(sd, br, labels = F)
+	a[is.na(a)] <- 1
+	cv.sd <- rep(0, length(s0.perc))
+	for (j in 1:length(s0.perc)) {
+		w <- quantile(sd, s0.perc[j])
+		w[j == 1] <- 0
+		tt2 <- tt * sd/(sd + w)
+		tt2[tt2 == Inf] = NA
+		sds <- rep(0, nbr - 1)
+		for (i in 1:(nbr - 1)) {
+			sds[i] <- mad(tt2[a == i], na.rm = TRUE)
+		}
+		cv.sd[j] <- sqrt(var(sds))/mean(sds)
+	}
+	o = (1:length(s0.perc))[cv.sd == min(cv.sd)]
+	# we don;t allow taking s0.hat to be 0th percentile when
+	#   min sd is 0
+	s0.hat = quantile(sd[sd != 0], s0.perc[o])
+	return(list(s0.perc = s0.perc, cv.sd = cv.sd, s0.hat = s0.hat))
+}
+
+
+sd = rnorm(1000,10,6)
+tt = rnorm(1000,34,5)
+est.s0(tt, sd, s0.perc = seq(0, 1, by = 0.05)) 
+
+
+
+
+
+
+
+##Packages
+library(MASS)
+install.packages("mixtools")
+library(mixtools)
+
+
+
+
+###############################################
+###############################################
+## Mixture for the SAMs t test statistics   ###
+###############################################
+###############################################
+
+##First test: Modified SAMs T using model based clustering 
+
+
+
+modified.samst.mixture = function(datamatrix, n1, n2)
+  {
+
+      em.out <- mvnormalmixEM(datamatrix, arbvar = FALSE, epsilon = 1e-02)       #Perform the Em Algorithm
+      n = n1 + n2
+      dim.posterior = ncol(em.out$posterior)
+      breaks = 1/dim.posterior
+      breaks.vector = rep( 1/dim.posterior, 2)
+      column.vector.breaks = c(0, breaks.vector)
+      cdf.breaks = cumsum(column.vector.breaks)
+      allocation.vector = rep(0, nrow(em.out$posterior))
+
+      #Put the indices for each sample in the data matrix
+
+      for (h in 1: dim.posterior)
+          {
+             indices = which(em.out$posterior[,h]>0.5)
+             allocation.vector[indices]=h
+          }
+
+       
+       sams.mod.test.statistics = rep(0, nrow(datamatrix))  #Create vectors to hold the modified sams test statistics    
+       s0.mod = rep(0, dim.posterior)                       #Create vector to hold the so_j's
+#Create di to holde the original di's
+
+
+##Run the modified SAMs t on this
+##First, Extract the data in each group
+
+for (g in 1:dim.posterior)
+ {
+  dataset.shorten.use = datamatrix[allocation.vector==g,]
+  fix.index = which(allocation.vector==g)
+  di.short = rep(0, nrow(dataset.shorten.use))
+  si.short = rep(0, nrow(dataset.shorten.use))
+
+    for (z in 1:nrow(dataset.shorten.use))
+      {
+        case.data.short = dataset.shorten.use[,1:n1]
+        control.data.short = dataset.shorten.use[,(n1+1):n]
+        xbars = apply(case.data.short, 1, mean)
+        ybars = apply(control.data.short, 1, mean)
+            for (w in 1: nrow(dataset.shorten.use))
+               {
+                 si.short[w] = t.test(case.data.short[w,], control.data.short[w,])$stderr
+               }
+
+s0.mod[g] = median(si.short)
+sams.mod.test.statistics[fix.index] = (xbars - ybars)/(si.short + em.out$lambda[g]*s0.mod[g])
+}
+
+}
+
+             di = sams.mod.test.statistics     #Produce the dis and ordered di's  for the SAM test statistics
+             ordered.di =  di[order(di)]
+
+
+
+            #Now we do the bootstrap on the for the dis
+
+             B = 1000
+             dmatrix = matrix(0, nrow(datamatrix), B)
+                   for (k in 1:B)
+                      {
+                        dperm = rep(0,nrow(datamatrix))
+                        permute = sample(1:n, n, replace=FALSE)
+                        perm.matrix = datamatrix[,permute]
+                            for (f in 1: nrow(datamatrix))
+                                  {
+                                     x = perm.matrix[f, 1:n1]
+                                     y = perm.matrix[f, (n1+1):n]
+                                     si.perm = t.test(x,y, var.equal=TRUE)$stderr
+                                     q = allocation.vector[f]
+                                     two.sample.samst = (mean(x) - mean(y))/(si.perm + em.out$lambda[q]*s0.mod[q])
+                                     dperm[f] =  two.sample.samst             
+                                  }
+                            ordered.dperm =  dperm[order(dperm)]
+                            dmatrix[,k] = ordered.dperm
+                       }
+
+dpermbar = apply(dmatrix, 1, mean)
+
+
+return(list(ordered.di, dpermbar, allocation.vector, s0.mod, sams.mod.test.statistics))
+
+}
+
+
+mod.sams = modified.samst.mixture(datamatrix, n1, n2)
+
+mod.sams[[1]] - mod.sams[[2]]
+
+plot(mod.sams[[1]] , mod.sams[[2]])
+
+
+
+
+
+
+
+########################################
+########################################
+######### Modified SAMS test  ##########
+########################################
+########################################
+
+modified.original.samst = function(datamatrix, n1, n2)
+{
+n = n1 + n2
+di = rep(0, nrow(datamatrix))
+si = rep(0, nrow(datamatrix))
+
+for (i in 1: nrow(datamat))
+{
+x = datamatrix[i, 1:n1]
+y = datamatrix[i, (n1+1):n]
+two.sample.t.pooled = t.test(x,y, var.equal=TRUE)
+di[i] = two.sample.t.pooled$statistic
+si[i] = two.sample.t.pooled$stderr
+}
+
+s0 = median(si)
+
+ordered.di =  di[order(di)]
+
+B = 1000
+dmatrix = matrix(0, nrow(datamatrix), B)
+for (k in 1:B)
+{
+dperm = rep(0,nrow(datamatrix))
+permute = sample(1:n, n, replace=FALSE)
+perm.matrix = datamat[,permute]
+for (i in 1: nrow(perm.matrix))
+{
+x = perm.matrix[i, 1:n1]
+y = perm.matrix[i, (n1+1):n]
+two.sample.t.pooled = t.test(x,y, var.equal=TRUE)
+dperm[i] = two.sample.t.pooled$statistic
+si[i] = two.sample.t.pooled$stderr
+}
+ordered.dperm =  dperm[order(dperm)]
+dmatrix[,k] = ordered.dperm
+}
+dbar = apply(dmatrix, 1, mean)
+
+
+#SAMs t test statistics
+
+case.data = datamatrix[,1:n1]
+control.data = datamatrix[,(n1+1):n]
+
+xbars = apply(case.data, 1, mean)
+ybars = apply(control.data, 1, mean)
+sams.test.statistics = (xbars - ybars)/(si + s0)
+
+return(list(ordered.di, dbar, si, sams.test.statistics))
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
